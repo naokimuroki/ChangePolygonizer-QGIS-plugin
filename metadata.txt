@@ -1,0 +1,17 @@
+[general]
+name=ChangePolygonizer
+qgisMinimumVersion=3.44
+qgisMaximumVersion=3.44
+description=2時期のRGB画像（RGB値）変化からの地表変化検出
+about=ChangePolygonizerは、2時期の空中写真/衛星画像のRGB値変化から地表変化部分のポリゴンを生成するプラグインです。
+version=1.0.1
+author=Forestgeo.info, Naoki Muroki
+email=naoki.muroki.84@forestgeo.info
+homepage=https://forestgeo.info/
+tracker=https://forestgeo.info/
+repository=https://github.com/naokimuroki
+category=Vector
+icon=icon.png
+tags=forest,satellite image,aerial photograph,森林,衛星画像,空中写真
+experimental=False
+deprecated=False
