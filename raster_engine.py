@@ -1,5 +1,6 @@
 import numpy as np
 from osgeo import gdal
+from scipy.ndimage import gaussian_filter
 
 
 # -----------------------------
@@ -102,9 +103,34 @@ def resample_match(a, b):
 
 
 # -----------------------------
+# 雲・雪マスク
+# -----------------------------
+def cloud_snow_mask(rgb):
+    r, g, b = rgb[0], rgb[1], rgb[2]
+
+    brightness = (r + g + b) / 3.0
+
+    whiteness = 1.0 - (
+        np.abs(r - g) +
+        np.abs(r - b) +
+        np.abs(g - b)
+    ) / 3.0
+
+    mask = (brightness > 0.6) & (whiteness > 0.7)
+
+    return mask.astype(float)
+
+
+# -----------------------------
 # メイン処理
 # -----------------------------
-def compute_diff(before_path, after_path, brightness_w, veg_w):
+def compute_diff(
+    before_path,
+    after_path,
+    brightness_w,
+    veg_w,
+    cloud_w
+):
 
     # --- 読み込み＆3857統一 ---
     a, gt = reproject_to_3857(before_path)
@@ -126,21 +152,42 @@ def compute_diff(before_path, after_path, brightness_w, veg_w):
 
     diff = np.sqrt(dr**2 + dg**2 + db**2)
 
-    # --- 明るさ補正 ---
+    # --- 明るさ補正（広域的） ---
     brightness_a = a.mean(axis=0)
     brightness_b = b.mean(axis=0)
 
-    brightness_change = np.abs(brightness_b - brightness_a)
-
+    brightness_change = brightness_b - brightness_a
     diff = diff - brightness_w * brightness_change
 
-    # --- 植生補正 ---
-    veg_index_a = a[1] - a[0]
-    veg_index_b = b[1] - b[0]
+    # --- 影補正（局所的） ---
+    blur_a = gaussian_filter(brightness_a, sigma=10) # 周囲10pixの影を考慮
+    blur_b = gaussian_filter(brightness_b, sigma=10) # 周囲10pixの影を考慮
 
-    veg_diff = veg_index_b - veg_index_a
+    local_dark_a = blur_a - brightness_a
+    local_dark_b = blur_b - brightness_b
 
-    diff = diff + veg_w * veg_diff
+    shadow_new = np.maximum(0, local_dark_b - local_dark_a)
+    shadow_old = np.maximum(0, local_dark_a - local_dark_b)
+
+    shadow_like = shadow_new + 0.5 * shadow_old # 画像Bの影をより重視
+
+    diff = diff - 0.5 * shadow_like
+
+    # --- 植生補正（緑→茶のみ強調） ---
+    veg_index_a = (a[1] - a[0]) / (a[1] + a[0] + 1e-6)
+    veg_index_b = (b[1] - b[0]) / (b[1] + b[0] + 1e-6)
+
+    veg_loss = np.maximum(0, veg_index_a - veg_index_b)
+
+    diff = diff + veg_w * veg_loss
+
+    # --- 雲・雪補正 ---
+    mask_a = cloud_snow_mask(a)
+    mask_b = cloud_snow_mask(b)
+
+    cloud_mask = np.maximum(mask_a, mask_b)
+
+    diff = diff * (1 - cloud_w * cloud_mask)
 
     # --- 正規化 ---
     diff = diff - diff.min()

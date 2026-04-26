@@ -26,23 +26,22 @@ class ChangePolygonizerDialog(QDialog, FORM_CLASS):
         # --- レイヤ初期化 ---
         self.populate_layers()
 
-        # =============================
-        # スライダー初期値（推奨値）
-        # =============================
-        self.thresholdSlider.setValue(30)   # 0.3
-        self.brightnessSlider.setValue(30)  # 0.3
-        self.vegSlider.setValue(50)         # 0.5
+        # --- スライダー初期値 ---
+        self.thresholdSlider.setValue(30)    # 0.3
+        self.brightnessSlider.setValue(20)   # 0.2
+        self.vegSlider.setValue(50)          # 0.5
+        self.cloudSlider.setValue(10)        # 0.1
 
-        # 面積
+        # --- 面積初期値 ---
         self.areaSpin.setValue(10)
 
-        # =============================
-        # シグナル接続
-        # =============================
+        # --- シグナル接続 ---
         self.captureBeforeButton.clicked.connect(self.capture_before)
         self.captureAfterButton.clicked.connect(self.capture_after)
-
-        # （任意）スライダー変更時に値表示したい場合ここで拡張可能
+        
+        # --- レイヤ変更時にキャプチャ無効化 ---
+        self.beforeCombo.currentIndexChanged.connect(self.reset_before_capture)
+        self.afterCombo.currentIndexChanged.connect(self.reset_after_capture)
 
     # -----------------------------
     # レイヤ一覧更新
@@ -55,6 +54,21 @@ class ChangePolygonizerDialog(QDialog, FORM_CLASS):
             if layer.type() == layer.RasterLayer:
                 self.beforeCombo.addItem(layer.name(), layer)
                 self.afterCombo.addItem(layer.name(), layer)
+        
+        # --- 更新時にキャプチャリセット ---
+        self.reset_before_capture()
+        self.reset_after_capture()
+
+    # -----------------------------
+    # キャプチャリセット
+    # -----------------------------
+    def reset_before_capture(self):
+        self.before_path = None
+        self.captureBeforeButton.setText("画像Aをキャプチャ")
+
+    def reset_after_capture(self):
+        self.after_path = None
+        self.captureAfterButton.setText("画像Bをキャプチャ")
 
     # -----------------------------
     # キャプチャ処理
@@ -100,6 +114,8 @@ class ChangePolygonizerDialog(QDialog, FORM_CLASS):
         threshold = self.thresholdSlider.value() / 100.0
         brightness = self.brightnessSlider.value() / 100.0
         veg = self.vegSlider.value() / 100.0
+        cloud = self.cloudSlider.value() / 100.0
+
         min_area = self.areaSpin.value()
 
-        return before, after, threshold, brightness, veg, min_area
+        return before, after, threshold, brightness, veg, cloud, min_area

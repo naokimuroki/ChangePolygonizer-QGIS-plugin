@@ -7,6 +7,9 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 
+import numpy as np
+from scipy import ndimage
+
 
 def mask_to_polygons(mask, geotransform, name, min_area):
 
@@ -14,6 +17,23 @@ def mask_to_polygons(mask, geotransform, name, min_area):
 
     height, width = mask.shape
 
+    # -----------------------------
+    # ラベリング（連結成分）
+    # -----------------------------
+    labeled, num = ndimage.label(mask)
+
+    sizes = ndimage.sum(mask, labeled, range(1, num + 1))
+
+    # min_area未満を除去
+    cleaned = np.zeros_like(mask, dtype=bool)
+
+    for i, size in enumerate(sizes):
+        if size >= min_area:
+            cleaned[labeled == (i + 1)] = True
+
+    # -----------------------------
+    # レイヤ作成
+    # -----------------------------
     layer = QgsVectorLayer("Polygon?crs=EPSG:3857", name, "memory")
     pr = layer.dataProvider()
 
@@ -22,17 +42,20 @@ def mask_to_polygons(mask, geotransform, name, min_area):
 
     features = []
 
+    # -----------------------------
+    # ピクセル→ポリゴン
+    # -----------------------------
     for y in range(height):
         for x in range(width):
 
-            if not mask[y, x]:
+            if not cleaned[y, x]:
                 continue
 
             x1 = gt[0] + x * gt[1]
             y1 = gt[3] + y * gt[5]
 
-            x2 = gt[0] + (x+1) * gt[1]
-            y2 = gt[3] + (y+1) * gt[5]
+            x2 = gt[0] + (x + 1) * gt[1]
+            y2 = gt[3] + (y + 1) * gt[5]
 
             pts = [
                 QgsPointXY(x1, y1),

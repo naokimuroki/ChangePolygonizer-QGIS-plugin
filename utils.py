@@ -15,6 +15,9 @@ def capture_canvas_to_tiff():
     width = qimg.width()
     height = qimg.height()
 
+    # ★ フォーマットを強制（重要）
+    qimg = qimg.convertToFormat(QImage.Format_RGBA8888)
+
     ptr = qimg.bits()
     ptr.setsize(height * width * 4)
 
@@ -50,10 +53,10 @@ def capture_canvas_to_tiff():
     import numpy as np
     img_np = np.frombuffer(arr, dtype=np.uint8).reshape((height, width, 4))
 
-    # RGBA → RGB
-    ds.GetRasterBand(1).WriteArray(img_np[:, :, 0])
-    ds.GetRasterBand(2).WriteArray(img_np[:, :, 1])
-    ds.GetRasterBand(3).WriteArray(img_np[:, :, 2])
+    # RGBA → RGB（確実に正しい順序）
+    ds.GetRasterBand(1).WriteArray(img_np[:, :, 0])  # R
+    ds.GetRasterBand(2).WriteArray(img_np[:, :, 1])  # G
+    ds.GetRasterBand(3).WriteArray(img_np[:, :, 2])  # B
 
     ds = None
 

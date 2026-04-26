@@ -46,7 +46,6 @@ class ChangePolygonizer:
     # -----------------------------
     def style_layer(self, layer, idx):
 
-        # CMYカラー（透明度50%）
         colors = [
             (0, 255, 255, 128),   # Cyan
             (255, 0, 255, 128),   # Magenta
@@ -67,14 +66,21 @@ class ChangePolygonizer:
     # -----------------------------
     def execute(self):
         try:
-            before, after, threshold, brightness, veg, min_area = self.dlg.get_inputs()
+            # cloud 追加
+            before, after, threshold, brightness, veg, cloud, min_area = self.dlg.get_inputs()
 
             if not before or not after:
                 QMessageBox.warning(None, "Error", "Before/After not set")
                 return
 
-            # 差分（GeoTransform付き）
-            diff, gt = compute_diff(before, after, brightness, veg)
+            # compute_diff 追加
+            diff, gt = compute_diff(
+                before,
+                after,
+                brightness,
+                veg,
+                cloud
+            )
 
             # 3段階
             thresholds = [
@@ -103,7 +109,7 @@ class ChangePolygonizer:
                 )
 
                 if layer:
-                    self.style_layer(layer, i)   # ← CMY適用
+                    self.style_layer(layer, i)
                     QgsProject.instance().addMapLayer(layer)
 
             QMessageBox.information(None, "Done", "Polygons generated")
